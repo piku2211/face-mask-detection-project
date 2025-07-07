@@ -1,0 +1,221 @@
+1.!pip install Kaggle
+2.from google.colab import drive
+drive.mount('/content/drive')
+3.#configuring the path of kaggle.json file
+!mkdir -p ~/.kaggle
+!cp kaggle.json ~/.kaggle/
+!chmod 600 ~/.kaggle/kaggle.json
+4.!kaggle datasets download -d omkargurav/face-mask-dataset
+5.from zipfile import ZipFile
+dataset = '/content/drive/MyDrive/Colab Notebooks/face-mask-dataset.zip'
+with ZipFile(dataset,'r') as zip:
+  zip.extractall()
+  print('The dataset is extracted')
+6.!ls
+7.import os
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+import pandas as pd
+import sklearn
+import cv2
+from google.colab.patches import cv2_imshow
+from PIL import Image
+from sklearn.model_selection import train_test_split
+8.with_mask_files = os.listdir('/content/data/with_mask')
+print(with_mask_files[0:5])
+print(with_mask_files[-5:])
+9.without_mask_files = os.listdir('/content/data/without_mask')
+print(without_mask_files[0:5])
+print(without_mask_files[-5:])
+10.print('Number of with mask images:',len(with_mask_files))
+print('Number of without mask images:',len(without_mask_files))
+11.#create the labels
+with_mask_labels = [1]*3725
+without_mask_labels = [0]*3828
+12.print(with_mask_labels[0:5])
+print(without_mask_labels[0:5])
+13.print(len(with_mask_labels))
+print(len(without_mask_label.s))
+14.labels = with_mask_labels + without_mask_labels
+print(len(labels))
+print(labels[0:5])
+print(labels[-5:])
+15.#displaying with mask image
+img = mpimg.imread('/content/data/with_mask/with_mask_1545.jpg')
+imgplot = plt.imshow(img)
+plt.show()
+16.#displaying without mask image
+img = mpimg.imread('/content/data/without_mask/without_mask_2925.jpg')
+imgplot = plt.imshow(img)
+plt.show()
+16.#convert images to numpy arrays+
+
+with_mask_path = '/content/data/with_mask/'
+data = []
+for img_file in with_mask_files:
+
+  image = Image.open(with_mask_path + img_file)
+  image = image.resize((128,128))
+  image = image.convert('RGB')
+  image = np.array(image)
+  data.append(image)
+
+
+without_mask_path = '/content/data/without_mask/'
+
+for img_file in without_mask_files:
+  image = Image.open(without_mask_path + img_file)
+  image = image.resize((128,128))
+  image = image.convert('RGB')
+  image = np.array(image)
+  data.append(image)
+17.type(data)
+18.len(data)
+19.data[0]
+20.type(data[0])
+21.data[0].shape
+22.#converting image list and label list to numpy arrays
+
+x = np.array(data)
+y = np.array(labels)
+23.type(x)
+24.type(y)
+25.print(x.shape)
+print(y.shape)
+26.print(y)
+27.x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=2)
+28.print(x.shape, x_train.shape, x_test.shape)
+29.#scalling the data
+
+x_train_scaled = x_train/255
+x_test_scaled = x_test/255
+
+30.# If not resized yet:
+x_train_resize = np.array([cv2.resize(img, (128,128)) for img in x_train])
+x_test_resize = np.array([cv2.resize(img, (128,128)) for img in x_test])
+
+# Then scale
+x_train_scaled = x_train_resize / 255.0
+x_test_scaled = x_test_resize / 255.0
+
+31.x_train_scaled = x_train_resize.astype('float32') / 255.0
+x_test_scaled = x_test_resize.astype('float32') / 255.0
+32.x_train[0]
+33.x_test_scaled[0]
+34.import tensorflow as tf
+from tensorflow import keras
+35.num_of_classes = 2
+model = keras.Sequential()
+
+model.add(keras.layers.Conv2D(32, kernel_size=(3,3), activation='relu', input_shape=(128,128,3)))
+model.add(keras.layers.MaxPooling2D(pool_size=(2,2)))
+
+model.add(keras.layers.Conv2D(64, kernel_size=(3,3), activation='relu'))
+model.add(keras.layers.MaxPooling2D(pool_size=(2,2)))
+
+model.add(keras.layers.Flatten())
+
+model.add(keras.layers.Dense(128, activation='relu'))
+model.add(keras.layers.Dropout(0.5))
+
+model.add(keras.layers.Dense(64, activation='relu'))
+model.add(keras.layers.Dropout(0.5))
+
+model.add(keras.layers.Dense(num_of_classes, activation='softmax'))
+36.#compile the neural network
+model.compile(optimizer='adam',
+              loss='sparse_categorical_crossentropy',
+              metrics=['acc'])
+
+37.#training the neural network
+history = model.fit(x_train_scaled, y_train, validation_split=0.1, epochs=10,batch_size=32)
+
+39.model.save("mask_detector_model.keras")
+print("Model saved as .keras format!")
+
+40.loss, accuracy = model.evaluate(x_test_scaled, y_test)
+print('Test Accuracy =', accuracy)
+
+41.h=history
+
+#plot the loss value
+plt.plot(h.history['loss'], label='train loss')
+plt.plot(h.history['val_loss'], label='validation loss')
+plt.legend()
+plt.show()
+
+#plot the accuracy value
+plt.plot(h.history['acc'], label='train accuracy')
+plt.plot(h.history['val_acc'], label='validation accuracy')
+plt.legend()
+plt.show()
+42.import numpy as np
+import cv2
+from google.colab.patches import cv2_imshow
+
+# Take input image path
+input_image_path = input('Enter the path of the image to be predicted: ')
+input_image = cv2.imread(input_image_path)
+
+if input_image is None:
+    print("Error: Image not found. Check the path.")
+else:
+    # Convert BGR to RGB to match training format
+    input_image = cv2.cvtColor(input_image, cv2.COLOR_BGR2RGB)
+
+    # Show the input image
+    cv2_imshow(input_image)
+
+    # Resize to match model input
+    input_image_resize = cv2.resize(input_image, (128, 128))
+
+    # Normalize and convert to float32
+    input_image_scaled = input_image_resize.astype('float32') / 255.0
+
+    # Reshape to match model input shape
+    input_image_reshaped = np.reshape(input_image_scaled, [1, 128, 128, 3])
+
+    # Predict using the trained model
+    input_prediction = model.predict(input_image_reshaped)
+
+    print("Prediction Probabilities:", input_prediction)
+
+    # Get predicted class (0 or 1)
+    input_pred_label = np.argmax(input_prediction)
+    print("Predicted Label:", input_pred_label)
+
+    # Final result
+    if input_pred_label == 1:
+        print('The person in the image is wearing a mask')
+    else:
+        print('The person in the image is NOT wearing a mask')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
